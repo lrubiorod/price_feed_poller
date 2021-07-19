@@ -154,10 +154,12 @@ def log_loop(
         try:
           currentId = feed.functions.lastRequestId().call()
           contract_status = feed.functions.pending().call()
+          lastTimestamp = feed.functions.timestamp().call()
           contracts_information.append({
             "feed" : feed,
             "status" : contract_status,
-            "currentId" : currentId
+            "currentId" : currentId,
+            "lastTimestamp" : lastTimestamp
           })
           print("Latest request Id for contract %s is #%d (pending: %s)" % (feed.address, currentId, contract_status))
         except Exception as ex:
@@ -195,10 +197,12 @@ def log_loop(
             # Result not ready. Wait for following group
             print("Waiting in contract %s for DR Result #%d" % (element["feed"].address, element["currentId"]))
         else:
-          # Check ellapsed time since last request to this feed contract:
+          if timestamps[index] == 0:
+            timestamps[index] = element["lastTimestamp"]
+          # Check elapsed time since last request to this feed contract:
           current_ts = int(time.time())
-          ellapsed_secs = current_ts - timestamps[index]
-          if timestamps[index] == 0 or ellapsed_secs >= min_secs_between_request_updates:
+          elapsed_secs = current_ts - timestamps[index]
+          if timestamps[index] == 0 or elapsed_secs >= min_secs_between_request_updates:
             # Contract waiting for next request to be sent
             success = handle_requestUpdate(
               w3,
@@ -213,7 +217,7 @@ def log_loop(
             if success:
               if timestamps[index] != 0:
                 print("Requested new update on contract %s after %d seconds since the last one."
-                  % (element["feed"].address, ellapsed_secs)
+                  % (element["feed"].address, elapsed_secs)
                 )
               timestamps[index] = current_ts
 
